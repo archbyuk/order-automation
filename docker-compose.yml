@@ -1,0 +1,11 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: order-automation-rabbitmq
+    ports:
+      - "5672:5672"      # RabbitMQ AMQP 포트
+      - "15672:15672"    # RabbitMQ 관리 UI
+    environment:
+      RABBITMQ_DEFAULT_USER: "3020467"       # 기본 계정
+      RABBITMQ_DEFAULT_PASS: jung04671588!       # 기본 비밀번호
+    restart: always        
