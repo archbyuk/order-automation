@@ -8,4 +8,21 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: "3020467"       # 기본 계정
       RABBITMQ_DEFAULT_PASS: jung04671588!       # 기본 비밀번호
-    restart: always        
+    restart: always
+
+  db:
+    image: mysql:8.0
+    container_name: order-automation-db
+    ports:
+      - "3308:3306"   # 3306, 3307 두 개 포트 모두 사용 중
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: oa_clinic_db
+      MYSQL_USER: oa_user
+      MYSQL_PASSWORD: jung04671588!
+    volumes:
+      - mysql-data:/var/lib/mysql
+    restart: always
+
+volumes:
+  mysql-data:
