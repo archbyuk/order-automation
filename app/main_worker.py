@@ -15,8 +15,14 @@ def process_order(message: dict):
 # RabbitMQ 큐 서버에 연결 후 order_queue 사용 (api 서버와 동일한 큐)
 def main():
     rabbitmq_host = os.getenv("RABBITMQ_HOST", "localhost")
-
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=rabbitmq_host))
+    
+    # docker-compose rabbitmq 접속 인증 정보
+    credentials = pika.PlainCredentials('3020467', 'jung04671588!')
+    # 연결 설정, host는 localhost고, 인증정보는 내 rabbitmq 정보
+    connection = pika.BlockingConnection(pika.ConnectionParameters(
+        host=rabbitmq_host,
+        credentials=credentials
+    ))
     channel = connection.channel()
     channel.queue_declare(queue='order_queue', durable=True)
 

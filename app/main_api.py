@@ -18,6 +18,7 @@ def get_db():
     finally:
         db.close()
 
+
 # DB 연결 확인 API
 @app.get("/db-check")
 def db_check(db: Depends = Depends(get_db)):
@@ -32,7 +33,7 @@ class OrderRequest(BaseModel):
     order_text: str
 
 
-# RabbitMQ 연결 함수
+# RabbitMQ 연결 함수, message type: dict
 def send_to_queue(message: dict):
     try:
         # docker-compose rabbitmq 접속 인증 정보
@@ -73,12 +74,13 @@ async def receive_order(req: OrderRequest):
     if not req.hospital_code or not req.order_text:
         raise HTTPException(status_code=400, detail="hospital_code and order_text are required")
 
+    # 수신받은 오더 정보를 작업 큐에 전송하기 위한 message 생성
     message = {
         "hospital_code": req.hospital_code,
         "order_text": req.order_text
     }
 
-    # RabbitMQ 큐에 메시지 전송
+    # RabbitMQ 큐에 메시지 전송: dict 형태로 전송
     send_to_queue(message)
     
     return {"message": "Order received and queued"}
