@@ -1,0 +1,28 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: order-automation-rabbitmq
+    ports:
+      - "5672:5672"      # RabbitMQ AMQP 포트
+      - "15672:15672"    # RabbitMQ 관리 UI
+    environment:
+      RABBITMQ_DEFAULT_USER: "3020467"       # 기본 계정
+      RABBITMQ_DEFAULT_PASS: jung04671588!       # 기본 비밀번호
+    restart: always
+
+  db:
+    image: mysql:8.0
+    container_name: order-automation-db
+    ports:
+      - "3308:3306"   # 3306, 3307 두 개 포트 모두 사용 중
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: oa_clinic_db
+      MYSQL_USER: oa_user
+      MYSQL_PASSWORD: jung04671588!
+    volumes:
+      - mysql-data:/var/lib/mysql
+    restart: always
+
+volumes:
+  mysql-data:
