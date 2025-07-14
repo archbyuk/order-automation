@@ -2,6 +2,8 @@ import pika
 import json
 import os
 import time
+from app.services.worker.order_parser import order_parser
+from app.services.worker.treatment_parser import parse_treatment_text
 
 # received order data example
 """
@@ -24,15 +26,64 @@ def process_order(message: dict):
     print(f"생성 시간: {message['created_at']}")
     print(f"row 오더 텍스트: {message['raw_text']}")
     
-    # TODO: 주문 텍스트 파싱 로직 추가
-    # 예: "박지영 / 67890 / 피부 관리 및 마사지 / 205호" → 구조화된 데이터로 변환
+    # 1단계: 주문 텍스트 파싱
+    print("\n--- 1단계: 주문 텍스트 파싱 ---")
+    success, parsed_order, error_message = order_parser.parse_with_validation(message['raw_text'])
     
-    # TODO: 병원 DB 연결 및 시술 매핑 로직 추가
+    if not success:
+        print(f"❌ 파싱 실패: {error_message}")
+        print("=== 오더 처리 실패 ===\n")
+        return
     
-    # TODO: Slack 전송 로직 추가
+    print(f"✅ 파싱 성공!")
+    print(f"   환자 이름: {parsed_order.patient_name}")
+    print(f"   차트 번호: {parsed_order.chart_number}")
+    print(f"   시술 내용: {parsed_order.treatment}")
+    print(f"   방 번호: {parsed_order.room}")
     
-    time.sleep(1)  # 처리 시간 시뮬레이션
-    print("=== 주문 처리 완료 ===\n")
+    # 8. 2단계: 시술 파싱
+    print("\n--- 2단계: 시술 파싱 ---")
+    
+    # 8-1. 시술 텍스트 파싱 실행
+    try:
+        parsed_treatments = parse_treatment_text(parsed_order.treatment)
+        
+        # 8-2. 파싱 결과 확인
+        if not parsed_treatments:
+            print(f"❌ 시술 파싱 실패: '{parsed_order.treatment}'")
+            print("=== 오더 처리 실패 ===\n")
+            return
+        
+        # 8-3. 파싱 성공 시 결과 출력
+        print(f"✅ 시술 파싱 성공!")
+        print(f" [ 원본 시술: {parsed_order.treatment} ]")
+        print(f" [[ 파싱된 시술 수: {len(parsed_treatments)}개 ]]")
+        print()
+        
+        for i, treatment in enumerate(parsed_treatments, 1):
+            print(f"- 시술 {i}:")
+            print(f"- 시술명: {treatment.name}")
+            print(f"- 횟수: {treatment.count}회")
+            
+            if treatment.round_info:
+                print(f"- 회차: {treatment.round_info}")
+            if treatment.area_note:
+                print(f"- 메모: {treatment.area_note}")
+            
+            print()  # 각 시술 사이에 빈 줄 추가
+        
+    except Exception as e:
+        print(f"❌ 시술 파싱 중 오류 발생: {e}")
+        print("=== 오더 처리 실패 ===\n")
+        return
+    
+    # TODO: 9. 3단계: 의사 배정 알고리즘 추가
+    
+    # TODO: 10. Slack 전송 로직 추가
+    
+    # 11. 처리 시간 시뮬레이션 (1초 대기)
+    time.sleep(1)
+    print("=== 오더 처리 완료 ===\n")
 
 # RabbitMQ 큐 서버에 연결 후 order_queue 사용 (api 서버와 동일한 큐)
 def main():

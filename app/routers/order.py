@@ -4,7 +4,7 @@ from app.database import get_db
 
 # 오더 관련 스키마, 서비스 로직 Import
 from app.schemas import order
-from app.services.order_service import create_order
+from app.services.order_received import create_order
 
 # API Router 설정
 router = APIRouter()
