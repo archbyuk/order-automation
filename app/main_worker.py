@@ -3,7 +3,11 @@ import json
 import os
 import time
 from app.services.worker.order_parser import order_parser
-from app.services.worker.treatment_parser import parse_treatment_text
+from app.services.worker.treatment_parser import treatment_parser
+from app.services.worker.treatment_mapper import map_parsed_treatments
+from app.services.worker.db_saver import save_mapped_treatments_with_assignment
+from app.services.doctor_assignment import doctor_assignment_service
+from app.database import get_db
 
 # received order data example
 """
@@ -18,7 +22,7 @@ from app.services.worker.treatment_parser import parse_treatment_text
 
 
 # 큐에서 오더 메시지를 실제로 처리하는 함수: 새로운 데이터 구조에 맞게 수정
-def process_order(message: dict):
+def process_order(message: dict, db):
     print("=== 오더 처리 시작 ===")
     print(f"오더 ID: {message['order_id']}")
     print(f"병원 ID: {message['hospital_id']}")
@@ -46,7 +50,7 @@ def process_order(message: dict):
     
     # 8-1. 시술 텍스트 파싱 실행
     try:
-        parsed_treatments = parse_treatment_text(parsed_order.treatment)
+        parsed_treatments = treatment_parser.parse_treatment_text(parsed_order.treatment)
         
         # 8-2. 파싱 결과 확인
         if not parsed_treatments:
@@ -77,11 +81,86 @@ def process_order(message: dict):
         print("=== 오더 처리 실패 ===\n")
         return
     
-    # TODO: 9. 3단계: 의사 배정 알고리즘 추가
+    # 3단계: 시술 매핑
+    print("\n--- 3단계: 시술 매핑 ---")
     
-    # TODO: 10. Slack 전송 로직 추가
+    try:
+        # 파싱된 시술들을 DB 시술 ID로 매핑
+        mapped_treatments = map_parsed_treatments(
+            db=db,
+            hospital_id=int(message['hospital_id']),
+            parsed_treatments=parsed_treatments
+        )
+        
+        # 매핑 결과 확인
+        if not mapped_treatments:
+            print(f"❌ 시술 매핑 실패: 매칭되는 시술이 없습니다")
+            print("=== 오더 처리 실패 ===\n")
+            return
+        
+        # 매핑 성공 시 결과 출력
+        print(f"✅ 시술 매핑 성공!")
+        print(f" [[ 매핑된 시술 수: {len(mapped_treatments)}개 ]]")
+        print()
+        
+        for i, treatment in enumerate(mapped_treatments, 1):
+            print(f"- 매핑된 시술 {i}:")
+            print(f"  - 시술 ID: {treatment.treatment_id}")
+            print(f"  - 횟수: {treatment.count}회")
+            print(f"  - 예상 소요시간: {treatment.estimated_minutes}분")
+            
+            if treatment.round_info:
+                print(f"  - 회차: {treatment.round_info}")
+            if treatment.area_note:
+                print(f"  - 메모: {treatment.area_note}")
+            
+            print()  # 각 시술 사이에 빈 줄 추가
+        
+    except Exception as e:
+        print(f"❌ 시술 매핑 중 오류 발생: {e}")
+        print("=== 오더 처리 실패 ===\n")
+        return
     
-    # 11. 처리 시간 시뮬레이션 (1초 대기)
+    # 4단계: 의사 배정
+    print("\n--- 4단계: 의사 배정 ---")
+    
+    try:
+        # 시술들을 의사에게 배정
+        assignment_results = doctor_assignment_service.assign_doctors_to_treatments(
+            db=db,
+            hospital_id=int(message['hospital_id']),
+            mapped_treatments=mapped_treatments
+        )
+        
+        print(f"✅ 의사 배정 완료!")
+        
+    except Exception as e:
+        print(f"❌ 의사 배정 중 오류 발생: {e}")
+        print("=== 오더 처리 실패 ===\n")
+        return
+    
+    # 5단계: DB 저장 (의사 배정 정보 포함)
+    print("\n--- 5단계: DB 저장 ---")
+    
+    try:
+        # 매핑된 시술들을 DB에 저장 (의사 배정 정보 포함)
+        save_mapped_treatments_with_assignment(
+            db=db,
+            order_id=int(message['order_id']),
+            mapped_treatments=mapped_treatments,
+            assignment_results=assignment_results
+        )
+        
+        print(f"✅ DB 저장 성공!")
+        
+    except Exception as e:
+        print(f"❌ DB 저장 중 오류 발생: {e}")
+        print("=== 오더 처리 실패 ===\n")
+        return
+    
+    # TODO: 6단계: Slack 전송 로직 추가
+    
+    # 7. 처리 시간 시뮬레이션 (1초 대기)
     time.sleep(1)
     print("=== 오더 처리 완료 ===\n")
 
@@ -91,11 +170,13 @@ def main():
     
     # docker-compose rabbitmq 접속 인증 정보
     credentials = pika.PlainCredentials('3020467', 'jung04671588!')
+    
     # 연결 설정, host는 localhost고, 인증정보는 내 rabbitmq 정보
     connection = pika.BlockingConnection(pika.ConnectionParameters(
         host=rabbitmq_host,
         credentials=credentials
     ))
+    
     channel = connection.channel()
     channel.queue_declare(queue='order_queue', durable=True)
 
@@ -103,8 +184,13 @@ def main():
     def callback(ch, method, properties, body):
         try:
             message = json.loads(body)  # 메시지 파싱
-            process_order(message)      # 메시지 처리
-            ch.basic_ack(delivery_tag=method.delivery_tag) # basic_ack: 메시지 처리 확인 후 큐에서 제거
+            # DB 세션 생성
+            db = next(get_db())
+            try:
+                process_order(message, db)  # 메시지 처리 (DB 세션 전달)
+                ch.basic_ack(delivery_tag=method.delivery_tag) # basic_ack: 메시지 처리 확인 후 큐에서 제거
+            finally:
+                db.close()  # DB 세션 닫기
         
         except Exception as e:
             print(f"Error processing message: {e}")

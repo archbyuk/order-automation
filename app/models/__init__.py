@@ -4,30 +4,29 @@ from app.database import Base
 # Hospital 모델
 from .hospital import Hospital
 
-# User 관련 모델들
-from .users import User, DoctorProfile, DoctorBreakTime, DoctorQualification, DoctorDailyMetric, DayOfWeek, DifficultyLevel
+# User 모델
+from .users import User
 
 # Treatment 관련 모델들
 from .treatment import (
-    TreatmentCategory, Treatment, HospitalTreatment, 
-    TreatmentGroup, HospitalTreatmentGroup, TreatmentGroupMapping
+    TreatmentCategory, HospitalTreatment, 
+    TreatmentGroup, TreatmentGroupItem
 )
 
 # Order 관련 모델들
-from .order import Order, OrderTreatment, OrderLog
+from .order import Order, OrderTreatment
 
-# Assignment 모델
-from .assignment import Assignment
+# Doctor Profile 모델
+from .doctor_profiles import DoctorProfile
 
 # 모든 모델을 한 곳에서 import할 수 있게 함
 __all__ = [
     "Base",
     "Hospital",
-    "User", "DoctorProfile", "DoctorBreakTime", "DoctorQualification", "DoctorDailyMetric",
-    "DayOfWeek", "DifficultyLevel",
-    "TreatmentCategory", "Treatment", "HospitalTreatment", 
-    "TreatmentGroup", "HospitalTreatmentGroup", "TreatmentGroupMapping",
-    "Order", "OrderTreatment", "OrderLog",
-    "Assignment"
+    "User",
+    "TreatmentCategory", "HospitalTreatment", 
+    "TreatmentGroup", "TreatmentGroupItem",
+    "Order", "OrderTreatment",
+    "DoctorProfile"
 ]
 
