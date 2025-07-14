@@ -19,4 +19,3 @@ def db_check(db: Depends = Depends(get_db)):
     # MySQL에 쿼리 날림
     result = db.execute("SELECT 1")
     return {"db": [r[0] for r in result]}
-

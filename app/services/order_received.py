@@ -1,12 +1,12 @@
 from sqlalchemy.orm import Session
 from app.models import Order, Hospital
-from app.schemas import order
+from app.schemas import schemas
 from app.services.send_queue import send_to_queue
 from fastapi import HTTPException
 import datetime
 
 """ 오더 요청이 들어오면 raw data를 DB에 저장하고 RabbitMQ에 전송하는 서비스 """
-def create_order(db: Session, order_request: order.OrderCreateRequest):
+def create_order(db: Session, order_request: schemas.OrderCreateRequest):
     try: 
         # 1. 들어온 오더 내 hospital_id와 Hospital 테이블을 비교하여 오더 요청 병원 조회
         hospital = db.query(Hospital).filter(Hospital.hospital_id == order_request.hospital_id).first()
