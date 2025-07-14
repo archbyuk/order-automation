@@ -16,3 +16,13 @@ SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 # 모델 선언 시 사용할 Base 클래스
 Base = declarative_base()
 # 나중에 코드 한 줄로 모델을 정의할 수 있게 해주는 클래스
+
+
+# FastAPI 의존성 주입을 위한 데이터베이스 세션 함수
+def get_db():
+    """데이터베이스 세션 의존성 주입"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

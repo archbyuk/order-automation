@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Text, DateTime, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime
@@ -21,12 +21,12 @@ class Order(Base):
     created_by = Column(Integer, ForeignKey("users.user_id"), nullable=False, comment='오더 작성자 사용자 ID')
     
     # 환자 정보
-    patient_name = Column(String(100), nullable=False, comment='환자 이름')
-    chart_number = Column(String(50), nullable=False, comment='차트 번호 (환자 고유 식별자)')
+    patient_name = Column(String(100), nullable=True, comment='환자 이름')
+    chart_number = Column(String(50), nullable=True, comment='차트 번호 (환자 고유 식별자)')
     
     # 오더 내용
     raw_text = Column(Text, nullable=False, comment='입력된 오더 원문 전체 텍스트 (파싱 전 원본)')
-    room = Column(String(50), nullable=False, comment='시술실 정보 (예: 1번실, VIP실)')
+    room = Column(String(50), nullable=True, comment='시술실 정보 (예: 1번실, VIP실)')
     
     # 메타데이터
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, comment='오더 생성 시각')

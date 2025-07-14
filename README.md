@@ -17,7 +17,7 @@ source venv/bin/activate
 
 ### 3. API 서버 실행
 ```bash
-uvicorn app.main_api:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main_api:app --reload
 ```
 **설명**: FastAPI 서버를 실행하여 HTTP 요청을 받을 수 있게 함
 
