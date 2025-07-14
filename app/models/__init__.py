@@ -19,6 +19,9 @@ from .order import Order, OrderTreatment
 # Doctor Profile 모델
 from .doctor_profiles import DoctorProfile
 
+# System Log 모델
+from .system_log import SystemLog
+
 # 모든 모델을 한 곳에서 import할 수 있게 함
 __all__ = [
     "Base",
@@ -27,6 +30,7 @@ __all__ = [
     "TreatmentCategory", "HospitalTreatment", 
     "TreatmentGroup", "TreatmentGroupItem",
     "Order", "OrderTreatment",
-    "DoctorProfile"
+    "DoctorProfile",
+    "SystemLog"
 ]
 

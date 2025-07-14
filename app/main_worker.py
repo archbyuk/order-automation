@@ -8,6 +8,7 @@ from app.services.worker.treatment_mapper import map_parsed_treatments
 from app.services.worker.db_saver import save_mapped_treatments_with_assignment
 from app.services.doctor_assignment import doctor_assignment_service
 from app.services.slack_service import get_slack_service
+from app.services.scheduler import get_scheduler_service
 from app.database import get_db
 
 # received order data example
@@ -191,10 +192,22 @@ def process_order(message: dict, db):
             first_assignment = successful_assignments[0]
             
             # 슬랙 알림 전송 (원본 오더 텍스트 + 배정된 의사명)
+            # created_by 값을 안전하게 처리
+            created_by = None
+            if 'created_by' in message and message['created_by'] is not None:
+                try:
+                    created_by = int(message['created_by'])
+                except (ValueError, TypeError):
+                    print(f"경고: created_by 값 변환 실패: {message['created_by']}")
+                    created_by = None
+            
             success = slack_service.send_assigned_order(
                 order_text=message['raw_text'],
                 assigned_doctor=first_assignment.assigned_doctor_name,
-                hospital_id=int(message['hospital_id'])
+                hospital_id=int(message['hospital_id']),
+                order_id=int(message['order_id']),
+                db=db,
+                created_by=created_by
             )
             
             if success:
@@ -214,6 +227,11 @@ def process_order(message: dict, db):
 
 # RabbitMQ 큐 서버에 연결 후 order_queue 사용 (api 서버와 동일한 큐)
 def main():
+    # 스케줄러 시작
+    print("스케줄러 시작 중...")
+    scheduler = get_scheduler_service()
+    scheduler.start()
+    
     rabbitmq_host = os.getenv("RABBITMQ_HOST", "localhost")
     
     # docker-compose rabbitmq 접속 인증 정보
@@ -259,6 +277,7 @@ def main():
     except KeyboardInterrupt:
         print("Shutting down worker.")
         channel.stop_consuming()
+        scheduler.stop()  # 스케줄러 중지
     
     finally:
         connection.close()
