@@ -7,6 +7,7 @@ from app.services.worker.treatment_parser import treatment_parser
 from app.services.worker.treatment_mapper import map_parsed_treatments
 from app.services.worker.db_saver import save_mapped_treatments_with_assignment
 from app.services.doctor_assignment import doctor_assignment_service
+from app.services.slack_service import get_slack_service
 from app.database import get_db
 
 # received order data example
@@ -133,10 +134,28 @@ def process_order(message: dict, db):
         )
         
         print(f"✅ 의사 배정 완료!")
+        print(f" [[ 배정 결과 상세 ]]")
+        print()
+        
+        # 배정 결과 상세 출력
+        for i, result in enumerate(assignment_results, 1):
+            print(f"- 시술 {i} (ID: {result.treatment_id}):")
+            
+            if result.assignment_success:
+                print(f"  ✅ 배정 성공!")
+                print(f"  - 담당 의사: {result.assigned_doctor_name} (ID: {result.assigned_doctor_id})")
+                print(f"  - 배정 점수: {result.assignment_score:.1f}점")
+                print(f"  - 배정 사유: {result.reason}")
+            else:
+                print(f"  ❌ 배정 실패!")
+                print(f"  - 실패 사유: {result.reason}")
+            
+            print()  # 각 시술 사이에 빈 줄 추가
         
     except Exception as e:
         print(f"❌ 의사 배정 중 오류 발생: {e}")
         print("=== 오더 처리 실패 ===\n")
+        
         return
     
     # 5단계: DB 저장 (의사 배정 정보 포함)
@@ -158,7 +177,36 @@ def process_order(message: dict, db):
         print("=== 오더 처리 실패 ===\n")
         return
     
-    # TODO: 6단계: Slack 전송 로직 추가
+    # 6단계: 슬랙 알림 전송 (의사 배정 완료 알림)
+    print("\n--- 6단계: 슬랙 알림 전송 ---")
+    
+    try:
+        slack_service = get_slack_service()
+        
+        # 배정 성공한 시술들만 필터링
+        successful_assignments = [r for r in assignment_results if r.assignment_success]
+        
+        if successful_assignments:
+            # 첫 번째 성공한 배정의 의사 정보 사용 (모든 시술이 같은 의사에게 배정됨)
+            first_assignment = successful_assignments[0]
+            
+            # 슬랙 알림 전송 (원본 오더 텍스트 + 배정된 의사명)
+            success = slack_service.send_assigned_order(
+                order_text=message['raw_text'],
+                assigned_doctor=first_assignment.assigned_doctor_name,
+                hospital_id=int(message['hospital_id'])
+            )
+            
+            if success:
+                print(f"✅ 슬랙 알림 전송 성공!")
+            else:
+                print(f"❌ 슬랙 알림 전송 실패!")
+        else:
+            print(f"⚠️ 배정 성공한 시술이 없어 슬랙 알림을 보내지 않습니다.")
+            
+    except Exception as slack_error:
+        print(f"❌ 슬랙 알림 전송 중 오류 발생: {str(slack_error)}")
+        # 슬랙 알림 실패는 전체 프로세스에 영향을 주지 않음
     
     # 7. 처리 시간 시뮬레이션 (1초 대기)
     time.sleep(1)
