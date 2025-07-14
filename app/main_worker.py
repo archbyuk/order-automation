@@ -3,14 +3,36 @@ import json
 import os
 import time
 
-# 큐에서 오더 메시지를 실제로 처리하는 함수: 현재는 단순 출력 후 1초 대기
+# received order data example
+"""
+    {
+        "order_id": 45,
+        "hospital_id": "41",
+        "raw_text": "박지영 / 67890 / 피부 관리 및 마사지 / 205호",
+        "created_by": 80,
+        "created_at": "2024-01-15T14:30:25.123456"
+    }
+"""
+
+
+# 큐에서 오더 메시지를 실제로 처리하는 함수: 새로운 데이터 구조에 맞게 수정
 def process_order(message: dict):
-    print("Received order:")
-    print(f"Hospital: {message['hospital_code']}")
-    print(f"Order: {message['order_text']}")
-    # TODO: 파싱, 병원 DB 연결, 시술 매핑, Slack 전송 로직 추가
+    print("=== 오더 처리 시작 ===")
+    print(f"오더 ID: {message['order_id']}")
+    print(f"병원 ID: {message['hospital_id']}")
+    print(f"생성자 ID: {message['created_by']}")
+    print(f"생성 시간: {message['created_at']}")
+    print(f"row 오더 텍스트: {message['raw_text']}")
+    
+    # TODO: 주문 텍스트 파싱 로직 추가
+    # 예: "박지영 / 67890 / 피부 관리 및 마사지 / 205호" → 구조화된 데이터로 변환
+    
+    # TODO: 병원 DB 연결 및 시술 매핑 로직 추가
+    
+    # TODO: Slack 전송 로직 추가
+    
     time.sleep(1)  # 처리 시간 시뮬레이션
-    print("Order processing complete\n")
+    print("=== 주문 처리 완료 ===\n")
 
 # RabbitMQ 큐 서버에 연결 후 order_queue 사용 (api 서버와 동일한 큐)
 def main():

@@ -31,5 +31,5 @@ def send_to_queue(message: dict):
         connection.close()
     
     except Exception as e:
-        print(f"Failed to send to queue: {e}")
+        print(f"Failed to send to RabbitMQ: {e}")
         raise 
