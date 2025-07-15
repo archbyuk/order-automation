@@ -16,3 +16,4 @@ pymysql==1.1.0
 sqlalchemy==1.4.53
 requests==2.31.0
 python-dotenv==1.0.0
+apscheduler==3.10.4

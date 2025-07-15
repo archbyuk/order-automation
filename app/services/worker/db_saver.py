@@ -54,24 +54,3 @@ def save_mapped_treatments_with_assignment(
         db.rollback()
         print(f"❌ DB 저장 중 오류 발생: {e}")
         raise e
-
-def save_mapped_treatments(db: Session, order_id: int, mapped_treatments: List[MappedTreatment]):
-    """매핑된 시술들을 OrderTreatment 테이블에 저장"""
-    try:
-        for item in mapped_treatments:
-            db.add(OrderTreatment(
-                order_id=order_id,
-                treatment_id=item.treatment_id,
-                count=item.count,
-                round_info=item.round_info,
-                area_note=item.area_note,
-                parsed_text=item.parsed_text if hasattr(item, 'parsed_text') else None,
-                estimated_minutes=item.estimated_minutes
-            ))
-        db.commit()
-        print(f"✅ {len(mapped_treatments)}개의 시술이 DB에 저장되었습니다.")
-    
-    except Exception as e:
-        db.rollback()
-        print(f"DB 저장 중 오류 발생: {e}")
-        raise e
