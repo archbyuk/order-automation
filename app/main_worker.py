@@ -197,6 +197,7 @@ def process_order(message: dict, db):
             if 'created_by' in message and message['created_by'] is not None:
                 try:
                     created_by = int(message['created_by'])
+                
                 except (ValueError, TypeError):
                     print(f"경고: created_by 값 변환 실패: {message['created_by']}")
                     created_by = None
