@@ -3,18 +3,18 @@ services:
     image: rabbitmq:3-management
     container_name: order-automation-rabbitmq
     ports:
-      - "5672:5672"      # RabbitMQ AMQP 포트
-      - "15672:15672"    # RabbitMQ 관리 UI
+      - 5672:5672     # RabbitMQ AMQP 포트
+      - 15672:15672  # RabbitMQ 관리 UI
     environment:
-      RABBITMQ_DEFAULT_USER: "3020467"       # 기본 계정
-      RABBITMQ_DEFAULT_PASS: jung04671588!       # 기본 비밀번호
+      RABBITMQ_DEFAULT_USER: 3020467
+      RABBITMQ_DEFAULT_PASS: jung04671588!
     restart: always
 
   db:
     image: mysql:8.0
     container_name: order-automation-db
     ports:
-      - "3308:3306"   # 3306, 3307 두 개 포트 모두 사용 중
+      - "3308:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: oa_clinic_db
@@ -23,6 +23,35 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     restart: always
+
+  api:
+    build: .
+    container_name: order-automation-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=mysql+pymysql://oa_user:jung04671588!@db:3306/oa_clinic_db
+      - RABBITMQ_URL=amqp://3020467:jung04671588!@rabbitmq:5672/
+      - SLACK_WEBHOOK_HOSPITAL_8=${SLACK_WEBHOOK_HOSPITAL_8}
+      - SLACK_WEBHOOK_HOSPITAL_9=${SLACK_WEBHOOK_HOSPITAL_9}
+    depends_on:
+      - db
+      - rabbitmq
+    restart: unless-stopped
+
+  worker:
+    build: .
+    container_name: order-automation-worker
+    command: python app/main_worker.py
+    environment:
+      - DATABASE_URL=mysql+pymysql://oa_user:jung04671588!@db:3306/oa_clinic_db
+      - RABBITMQ_URL=amqp://3020467:jung04671588!@rabbitmq:5672/
+      - SLACK_WEBHOOK_HOSPITAL_8=${SLACK_WEBHOOK_HOSPITAL_8}
+      - SLACK_WEBHOOK_HOSPITAL_9=${SLACK_WEBHOOK_HOSPITAL_9}
+    depends_on:
+      - db
+      - rabbitmq
+    restart: unless-stopped
 
 volumes:
   mysql-data:
