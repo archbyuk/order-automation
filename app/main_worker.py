@@ -233,7 +233,7 @@ def main():
     scheduler = get_scheduler_service()
     scheduler.start()
     
-    rabbitmq_host = os.getenv("RABBITMQ_HOST", "localhost")
+    rabbitmq_host = os.getenv("RABBITMQ_HOST", "rabbitmq")
     
     # docker-compose rabbitmq 접속 인증 정보
     credentials = pika.PlainCredentials('3020467', 'jung04671588!')
