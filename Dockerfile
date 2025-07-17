@@ -17,6 +17,7 @@ RUN apt-get update \
         gcc \
         default-libmysqlclient-dev \
         pkg-config \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 5. 의존성 설치
