@@ -1,0 +1,33 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - master  # main 브랜치 push 시 동작
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v3
+
+    - name: Setup SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+
+    - name: Add known_hosts
+      run: |
+        ssh-keyscan -H 43.201.5.115 >> ~/.ssh/known_hosts
+
+    - name: Deploy to EC2 and restart Docker
+      run: |
+        ssh -i ~/.ssh/id_rsa ec2-user@43.201.5.115 << 'EOF'
+          cd ~/order-automation
+          git pull origin main
+          docker-compose down
+          docker-compose up -d --build
+        EOF
