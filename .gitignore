@@ -26,5 +26,5 @@ Thumbs.db
 # Logs
 *.log
 
-# Docker
-.dockerignore
+# guide
+aws-deployment-guide.md
