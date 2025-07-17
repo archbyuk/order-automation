@@ -29,7 +29,18 @@ jobs:
         ssh -i ~/.ssh/id_rsa ec2-user@43.201.5.115 << 'EOF'
           sudo systemctl restart docker
           sleep 3
+
+          PID=\$(sudo lsof -t -i:8000)
+          if [ ! -z "\$PID" ]; then
+            echo "Killing process on port 8000: PID=\$PID"
+            sudo kill -9 \$PID
+            sleep 2
+          fi
+
           cd ~/order-automation
           git pull origin master
+
+          # 4. 컨테이너 재실행
+          docker-compose down
           docker-compose up -d --build
         EOF
