@@ -31,7 +31,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=mysql+pymysql://oa_user:jung04671588!@db:3306/oa_clinic_db
-      - RABBITMQ_URL=amqp://3020467:jung04671588!@rabbitmq:5672/
+      - RABBITMQ_HOST=rabbitmq
       - SLACK_WEBHOOK_HOSPITAL_8=${SLACK_WEBHOOK_HOSPITAL_8}
       - SLACK_WEBHOOK_HOSPITAL_9=${SLACK_WEBHOOK_HOSPITAL_9}
     depends_on:
@@ -45,7 +45,7 @@ services:
     command: python app/main_worker.py
     environment:
       - DATABASE_URL=mysql+pymysql://oa_user:jung04671588!@db:3306/oa_clinic_db
-      - RABBITMQ_URL=amqp://3020467:jung04671588!@rabbitmq:5672/
+      - RABBITMQ_HOST=rabbitmq
       - SLACK_WEBHOOK_HOSPITAL_8=${SLACK_WEBHOOK_HOSPITAL_8}
       - SLACK_WEBHOOK_HOSPITAL_9=${SLACK_WEBHOOK_HOSPITAL_9}
     depends_on:
