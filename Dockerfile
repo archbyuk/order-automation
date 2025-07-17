@@ -1,7 +1,7 @@
 # [ FastAPI 컨테이너 ]
 
 # 1. 베이스 이미지: Python 3.9 slim 버전
-FROM python:3.9.slim
+FROM python:3.9-slim
 
 # 2. 환경 변수 설정: .pyc 파일 생성 방지 (개발 환경 최적화), 파이썬 출력 버퍼링 비활성화, 파이썬 모듈 검색 경로 설정
 ENV PYTHONDONTWRITEBYTECODE=1 \
