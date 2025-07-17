@@ -27,8 +27,9 @@ jobs:
     - name: Deploy to EC2 and restart Docker
       run: |
         ssh -i ~/.ssh/id_rsa ec2-user@43.201.5.115 << 'EOF'
+          sudo systemctl restart docker
+          sleep 3
           cd ~/order-automation
           git pull origin master
-          docker-compose down
           docker-compose up -d --build
         EOF
