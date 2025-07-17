@@ -21,7 +21,8 @@ jobs:
 
     - name: Add known_hosts
       run: |
-        ssh-keyscan -H 43.201.5.115 >> ~/.ssh/known_hosts
+        mkdir -p ~/.ssh
+        ssh-keyscan -4 -H 43.201.5.115 >> ~/.ssh/known_hosts
 
     - name: Deploy to EC2 and restart Docker
       run: |
