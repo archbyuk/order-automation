@@ -10,7 +10,7 @@ def send_to_queue(message: dict):
         
         # RabbitMQ 연결 설정
         connection = pika.BlockingConnection(pika.ConnectionParameters(
-            host=os.getenv("RABBITMQ_HOST", "localhost"),
+            host=os.getenv("RABBITMQ_HOST", "rabbitmq"),
             credentials=credentials
         ))
         
