@@ -60,22 +60,22 @@ class DoctorAssignmentService:
             )
             
             if not specified_doctor:
-                logger.warning(f"지명된 의사 '{doctor_name}'을 찾을 수 없습니다. 자동 배정으로 전환")
-                return self._assign_with_auto_selection(db, hospital_id, mapped_treatments)
+                logger.error(f"지명된 의사 '{doctor_name}'을 찾을 수 없습니다. 배정 실패")
+                return self._create_failed_assignments(mapped_treatments, f"지명된 의사 '{doctor_name}'을 찾을 수 없습니다")
             
             # 2. 휴무시간 체크
             current_time = datetime.now().time()
             if self._is_doctor_on_break(specified_doctor, current_time):
-                logger.warning(f"지명된 의사 '{doctor_name}'이 휴무시간입니다. 자동 배정으로 전환")
-                return self._assign_with_auto_selection(db, hospital_id, mapped_treatments)
+                logger.error(f"지명된 의사 '{doctor_name}'이 휴무시간입니다. 배정 실패")
+                return self._create_failed_assignments(mapped_treatments, f"지명된 의사 '{doctor_name}'이 휴무시간입니다")
             
             # 3. 가능한 시술 목록 확인
             qualified_treatments = self._parse_qualified_treatments(specified_doctor.qualified_treatment_ids)
             all_treatment_ids = [treatment.treatment_id for treatment in mapped_treatments]
             
             if not all(treatment_id in qualified_treatments for treatment_id in all_treatment_ids):
-                logger.warning(f"지명된 의사 '{doctor_name}'이 모든 시술을 할 수 없습니다. 자동 배정으로 전환")
-                return self._assign_with_auto_selection(db, hospital_id, mapped_treatments)
+                logger.error(f"지명된 의사 '{doctor_name}'이 모든 시술을 할 수 없습니다. 배정 실패")
+                return self._create_failed_assignments(mapped_treatments, f"지명된 의사 '{doctor_name}'이 모든 시술을 할 수 없습니다")
             
             # 4. 지명된 의사에게 배정
             assignment_results = []
@@ -110,7 +110,7 @@ class DoctorAssignmentService:
             
         except Exception as e:
             logger.error(f"지명 의사 배정 중 오류 발생: {e}")
-            return self._assign_with_auto_selection(db, hospital_id, mapped_treatments)
+            return self._create_failed_assignments(mapped_treatments, f"지명 의사 배정 오류: {str(e)}")
     
     def _assign_with_auto_selection(
         self, 
