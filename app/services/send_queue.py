@@ -5,8 +5,14 @@ import os
 # RabbitMQ 큐에 메시지 전송
 def send_to_queue(message: dict):
     try:
-        # docker-compose rabbitmq 접속 인증 정보
-        credentials = pika.PlainCredentials('3020467', 'jung04671588!')
+        # 환경변수에서 RabbitMQ 인증 정보 가져오기 (기본값 없음)
+        username = os.getenv("RABBITMQ_USERNAME")
+        password = os.getenv("RABBITMQ_PASSWORD")
+        
+        if not username or not password:
+            raise ValueError("RABBITMQ_USERNAME과 RABBITMQ_PASSWORD 환경변수가 설정되어야 합니다.")
+        
+        credentials = pika.PlainCredentials(username, password)
         
         # RabbitMQ 연결 설정
         connection = pika.BlockingConnection(pika.ConnectionParameters(
