@@ -2,6 +2,20 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
+# 로그인 관련 스키마
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class LoginResponse(BaseModel):
+    success: bool
+    user_id: Optional[int] = None
+    hospital_id: Optional[int] = None
+    name: Optional[str] = None
+    role: Optional[str] = None
+    is_doctor: Optional[bool] = None
+    message: Optional[str] = None
+
 # 사용자가 오더 요청을 보낼 때 사용하는 스키마
 class OrderCreateRequest(BaseModel):
     hospital_id: int    # hospital_id

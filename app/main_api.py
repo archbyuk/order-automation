@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from app.database import get_db
 
 # Router import
-from app.routers import order
+from app.routers import order, auth
 
 # 커스텀 예외 및 핸들러 import
 from app.exceptions import OrderProcessingError
@@ -18,6 +18,7 @@ app = FastAPI(title="Order Automation API", version="1.0.0")
 app.add_exception_handler(OrderProcessingError, order_processing_error_handler)
 
 # Router 등록
+app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(order.router, prefix="/api/v1", tags=["orders"])
 
 # 오더 상태 조회 API
