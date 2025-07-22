@@ -246,7 +246,7 @@ def main():
     channel.queue_declare(queue='order_queue', durable=True)
 
     # 큐에서 메시지가 도착하면 자동으로 호출되는 함수
-    def callback(ch, method, body):
+    def callback(ch, method, properties, body):
         try:
             message = json.loads(body)  # 메시지 파싱
             # DB 세션 생성
