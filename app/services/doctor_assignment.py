@@ -5,6 +5,7 @@ import json
 import logging
 from app.models import DoctorProfile
 from app.schemas.schemas import MappedTreatment, DoctorAssignmentResult, DoctorCandidate
+from app.exceptions import DoctorAssignmentError, SpecifiedDoctorAssignmentError
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -33,9 +34,12 @@ class DoctorAssignmentService:
             # 2. 지명 의사가 없는 경우 기존 자동 배정 로직 사용
             return self._assign_with_auto_selection(db, hospital_id, mapped_treatments)
             
+        except (DoctorAssignmentError, SpecifiedDoctorAssignmentError):
+            # 커스텀 예외는 그대로 재발생
+            raise
         except Exception as e:
-            logger.error(f"의사 배정 중 오류 발생: {e}")
-            return self._create_failed_assignments(mapped_treatments, f"배정 오류: {str(e)}")
+            logger.error(f"의사 배정 중 예상치 못한 오류 발생: {e}")
+            raise DoctorAssignmentError(f"의사 배정 중 오류가 발생했습니다: {str(e)}")
     
     def _assign_to_specified_doctor(
         self, 
@@ -60,22 +64,19 @@ class DoctorAssignmentService:
             )
             
             if not specified_doctor:
-                logger.error(f"지명된 의사 '{doctor_name}'을 찾을 수 없습니다. 배정 실패")
-                return self._create_failed_assignments(mapped_treatments, f"지명된 의사 '{doctor_name}'을 찾을 수 없습니다")
+                raise SpecifiedDoctorAssignmentError(f"지명된 의사 '{doctor_name}'을 찾을 수 없습니다")
             
             # 2. 휴무시간 체크
             current_time = datetime.now().time()
             if self._is_doctor_on_break(specified_doctor, current_time):
-                logger.error(f"지명된 의사 '{doctor_name}'이 휴무시간입니다. 배정 실패")
-                return self._create_failed_assignments(mapped_treatments, f"지명된 의사 '{doctor_name}'이 휴무시간입니다")
+                raise SpecifiedDoctorAssignmentError(f"지명된 의사 '{doctor_name}'이 휴무시간입니다")
             
             # 3. 가능한 시술 목록 확인
             qualified_treatments = self._parse_qualified_treatments(specified_doctor.qualified_treatment_ids)
             all_treatment_ids = [treatment.treatment_id for treatment in mapped_treatments]
             
             if not all(treatment_id in qualified_treatments for treatment_id in all_treatment_ids):
-                logger.error(f"지명된 의사 '{doctor_name}'이 모든 시술을 할 수 없습니다. 배정 실패")
-                return self._create_failed_assignments(mapped_treatments, f"지명된 의사 '{doctor_name}'이 모든 시술을 할 수 없습니다")
+                raise SpecifiedDoctorAssignmentError(f"지명된 의사 '{doctor_name}'이 모든 시술을 할 수 없습니다")
             
             # 4. 지명된 의사에게 배정
             assignment_results = []
@@ -101,16 +102,19 @@ class DoctorAssignmentService:
                 
             except Exception as e:
                 logger.error(f"지명 의사 배정 DB 업데이트 실패: {e}")
-                return self._create_failed_assignments(mapped_treatments, f"DB 업데이트 실패: {str(e)}")
+                raise SpecifiedDoctorAssignmentError(f"DB 업데이트 실패: {str(e)}")
             
             # 5. 배정 결과 로깅
             self._log_assignment_summary(assignment_results)
             
             return assignment_results
             
+        except (SpecifiedDoctorAssignmentError):
+            # 커스텀 예외는 그대로 재발생
+            raise
         except Exception as e:
-            logger.error(f"지명 의사 배정 중 오류 발생: {e}")
-            return self._create_failed_assignments(mapped_treatments, f"지명 의사 배정 오류: {str(e)}")
+            logger.error(f"지명 의사 배정 중 예상치 못한 오류 발생: {e}")
+            raise SpecifiedDoctorAssignmentError(f"지명 의사 배정 중 오류가 발생했습니다: {str(e)}")
     
     def _assign_with_auto_selection(
         self, 
@@ -125,8 +129,7 @@ class DoctorAssignmentService:
         doctor_candidates = self._get_doctor_candidates(db, hospital_id)
         
         if not doctor_candidates:
-            logger.warning(f"병원 {hospital_id}에 배정 가능한 의사가 없습니다")
-            return self._create_failed_assignments(mapped_treatments, "배정 가능한 의사가 없습니다")
+            raise DoctorAssignmentError("병원에 배정 가능한 의사가 없습니다")
         
         # 2. 오더의 모든 시술을 할 수 있는 의사 찾기
         all_treatment_ids = [treatment.treatment_id for treatment in mapped_treatments]
@@ -136,14 +139,13 @@ class DoctorAssignmentService:
         ]
         
         if not available_candidates:
-            logger.warning(f"오더의 모든 시술을 할 수 있는 의사가 없습니다. 시술 ID: {all_treatment_ids}")
-            return self._create_failed_assignments(mapped_treatments, "오더의 모든 시술을 할 수 있는 의사가 없습니다")
+            raise DoctorAssignmentError("오더의 모든 시술을 할 수 있는 의사가 없습니다")
         
         # 3. 최적 의사 선택
         best_candidate = self._select_best_candidate(available_candidates)
         
         if not best_candidate:
-            return self._create_failed_assignments(mapped_treatments, "적절한 의사를 찾을 수 없습니다")
+            raise DoctorAssignmentError("적절한 의사를 찾을 수 없습니다")
         
         # 4. 선택된 의사에게 모든 시술 배정
         assignment_results = []
@@ -169,7 +171,7 @@ class DoctorAssignmentService:
             
         except Exception as e:
             logger.error(f"의사 배정 DB 업데이트 실패: {e}")
-            return self._create_failed_assignments(mapped_treatments, f"DB 업데이트 실패: {str(e)}")
+            raise DoctorAssignmentError(f"DB 업데이트 실패: {str(e)}")
         
         # 5. 배정 결과 로깅
         self._log_assignment_summary(assignment_results)
