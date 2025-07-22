@@ -9,6 +9,12 @@ services:
       RABBITMQ_DEFAULT_USER: 3020467
       RABBITMQ_DEFAULT_PASS: jung04671588!
     restart: always
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   db:
     image: mysql:8.0
@@ -23,6 +29,12 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   api:
     build: .
@@ -35,8 +47,10 @@ services:
       - SLACK_WEBHOOK_HOSPITAL_8=${SLACK_WEBHOOK_HOSPITAL_8}
       - SLACK_WEBHOOK_HOSPITAL_9=${SLACK_WEBHOOK_HOSPITAL_9}
     depends_on:
-      - db
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   worker:
@@ -49,8 +63,10 @@ services:
       - SLACK_WEBHOOK_HOSPITAL_8=${SLACK_WEBHOOK_HOSPITAL_8}
       - SLACK_WEBHOOK_HOSPITAL_9=${SLACK_WEBHOOK_HOSPITAL_9}
     depends_on:
-      - db
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "pgrep", "-f", "python app/main_worker.py"]
