@@ -40,7 +40,7 @@ services:
     build: .
     container_name: order-automation-api
     ports:
-      - "8000:8000"
+      - "9000:8000"
     environment:
       - DATABASE_URL=mysql+pymysql://oa_user:jung04671588!@db:3306/oa_clinic_db
       - RABBITMQ_HOST=rabbitmq
