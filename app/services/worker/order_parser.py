@@ -2,6 +2,7 @@ from typing import Optional, Tuple, List
 from pydantic import BaseModel, validator
 import re
 import logging
+from app.exceptions import OrderParsingError, ValidationError
 
 # 로깅 설정: 로그를 체계적으로 기록하기 위함
 logger = logging.getLogger(__name__)
@@ -26,35 +27,35 @@ class ParsedOrder(BaseModel):
     @validator('patient_name')
     def validate_patient_name(cls, v):
         if len(v) < 2:
-            raise ValueError("환자 이름이 너무 짧습니다")
+            raise ValidationError("환자 이름이 너무 짧습니다")
         return v
 
     # 차트 번호 검증 (숫자만 허용)
     @validator('chart_number')
     def validate_chart_number(cls, v):
         if not v.isdigit():
-            raise ValueError("차트 번호는 숫자만 입력 가능합니다")
+            raise ValidationError("차트 번호는 숫자만 입력 가능합니다")
         return v
 
     # 시술 내용 검증 (최소 2글자 이상)
     @validator('treatment')
     def validate_treatment(cls, v):
         if len(v) < 2:
-            raise ValueError("시술 내용이 너무 짧습니다")
+            raise ValidationError("시술 내용이 너무 짧습니다")
         return v
 
     # 방 번호 검증 (최소 2글자 이상)
     @validator('room')
     def validate_room(cls, v):
         if len(v) < 2:
-            raise ValueError("방 번호가 너무 짧습니다")
+            raise ValidationError("방 번호가 너무 짧습니다")
         return v
 
     # 지명 의사 이름 검증 (선택적, 있으면 최소 2글자 이상)
     @validator('doctor_name')
     def validate_doctor_name(cls, v):
         if v is not None and len(v) < 2:
-            raise ValueError("의사 이름이 너무 짧습니다")
+            raise ValidationError("의사 이름이 너무 짧습니다")
         return v
 
 # 3. 오더 텍스트를 파싱하는 메인 클래스
@@ -71,8 +72,7 @@ class OrderParser:
             fields = self._extract_fields(normalized_text)
             
             if not fields:
-                logger.warning(f"파싱 실패: 템플릿 형식이 맞지 않습니다. 입력: {raw_text}")
-                return None
+                raise OrderParsingError(f"오더 형식이 올바르지 않습니다. 입력: {raw_text}")
 
             # 6. 추출된 필드들을 개별 변수로 할당
             if len(fields) == 5:
@@ -94,10 +94,13 @@ class OrderParser:
             )
             return parsed
         
-        # 3-1. 파싱 중 오류 발생 시 로깅
+        # 3-1. 파싱 중 오류 발생 시 예외 발생
+        except (OrderParsingError, ValidationError):
+            # 커스텀 예외는 그대로 재발생
+            raise
         except Exception as e:
-            logger.warning(f"파싱 중 오류 발생: {e}, 입력: {raw_text}")
-            return None
+            logger.warning(f"파싱 중 예상치 못한 오류 발생: {e}, 입력: {raw_text}")
+            raise OrderParsingError(f"오더 파싱 중 오류가 발생했습니다: {str(e)}")
 
     # 8. 정규표현식을 사용하여 텍스트에서 필드 추출하는 내부 함수
     def _extract_fields(self, text: str) -> Optional[Tuple[str, ...]]:
@@ -114,14 +117,11 @@ class OrderParser:
     # 9. 파싱과 검증을 함께 수행하는 통합 함수
     def parse_with_validation(self, raw_text: str) -> Tuple[bool, Optional[ParsedOrder], str]:
         # 파싱 실행
-        parsed = self.parse(raw_text)
-        
-        # 파싱 실패 시 에러 메시지와 함께 False 반환
-        if not parsed:
-            return False, None, "오더 텍스트 파싱에 실패했습니다"
-
-        # 파싱 성공 시 True와 파싱 결과 반환
-        return True, parsed, ""
+        try:
+            parsed = self.parse(raw_text)
+            return True, parsed, ""
+        except (OrderParsingError, ValidationError) as e:
+            return False, None, str(e)
 
 # 전역 인스턴스 생성 (다른 모듈에서 import하여 사용)
 order_parser = OrderParser()
