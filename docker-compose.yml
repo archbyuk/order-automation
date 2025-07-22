@@ -52,6 +52,12 @@ services:
       - db
       - rabbitmq
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "python app/main_worker.py"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 5s
 
 volumes:
   mysql-data:

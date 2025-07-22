@@ -238,7 +238,7 @@ def main():
     
     # 연결 설정, host는 localhost고, 인증정보는 내 rabbitmq 정보
     connection = pika.BlockingConnection(pika.ConnectionParameters(
-         host=os.getenv("RABBITMQ_HOST", "rabbitmq"),
+         host=os.getenv("RABBITMQ_HOST", "localhost"),
         credentials=credentials
     ))
     
