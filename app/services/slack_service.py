@@ -63,7 +63,7 @@ class SlackService:
             print(f"슬랙 메시지 전송 중 오류: {str(e)} (병원 {hospital_id})")
             return False
     
-    def send_assigned_order(self, order_text: str, assigned_doctor: str, hospital_id: int, order_id: int, db: Session, created_by: int = None) -> bool:
+    def send_assigned_order(self, order_text: str, assigned_doctor: str, hospital_id: int, order_id: int, db: Session, created_by: int = None, is_specified_doctor: bool = False) -> bool:
         """
             의사 배정 완료된 오더를 슬랙에 전송하고 로그 저장
             
@@ -74,13 +74,18 @@ class SlackService:
                 order_id: 오더 ID
                 db: 데이터베이스 세션
                 created_by: 오더 생성자 사용자 ID
+                is_specified_doctor: 지명 의사 여부
                 
             Returns:
                 bool: 전송 성공 여부
         """
         try:
-            # 원본 오더 텍스트에 배정된 의사명 추가
-            message = f"{order_text} / {assigned_doctor}"
+            # 지명 의사가 있으면 원본 텍스트 그대로 사용 (의사 이름이 이미 포함됨)
+            # 자동 배정이면 원본 텍스트에 배정된 의사명 추가
+            if is_specified_doctor:
+                message = order_text  # 지명 의사는 원본 텍스트 그대로
+            else:
+                message = f"{order_text} / {assigned_doctor}"  # 자동 배정은 의사명 추가
             
             # 슬랙 메시지 전송
             success = self.send_message(message, hospital_id)

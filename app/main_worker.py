@@ -203,6 +203,9 @@ def process_order(message: dict, db):
             # 첫 번째 성공한 배정의 의사 정보 사용 (모든 시술이 같은 의사에게 배정됨)
             first_assignment = successful_assignments[0]
             
+            # 지명 의사가 있는지 확인
+            is_specified_doctor = parsed_order.doctor_name is not None
+            
             # 슬랙 알림 전송 (원본 오더 텍스트 + 배정된 의사명)
             # created_by 값을 안전하게 처리
             created_by = None
@@ -220,7 +223,8 @@ def process_order(message: dict, db):
                 hospital_id=int(message['hospital_id']),
                 order_id=int(message['order_id']),
                 db=db,
-                created_by=created_by
+                created_by=created_by,
+                is_specified_doctor=is_specified_doctor  # 지명 의사 여부 전달
             )
             
             if success:
