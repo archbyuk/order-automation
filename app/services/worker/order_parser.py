@@ -6,9 +6,10 @@ import logging
 # 로깅 설정: 로그를 체계적으로 기록하기 위함
 logger = logging.getLogger(__name__)
 
-# 1. 파싱할 템플릿 패턴 정의 (환자이름 / 차트번호 / 시술내용 / 방번호)
+# 1. 파싱할 템플릿 패턴 정의 (환자이름 / 차트번호 / 시술내용 / 방번호 / 의사이름(선택적))
 TEMPLATE_PATTERNS: List[re.Pattern] = [
-    re.compile(r'^(.+?)\s*/\s*(\d+)\s*/\s*(.+?)\s*/\s*(.+)$'),
+    re.compile(r'^(.+?)\s*/\s*(\d+)\s*/\s*(.+?)\s*/\s*(.+?)\s*/\s*(.+)$'),  # 5개 필드 (지명 의사)
+    re.compile(r'^(.+?)\s*/\s*(\d+)\s*/\s*(.+?)\s*/\s*(.+)$'),              # 4개 필드 (자동 배정)
 ]
 
 # 2. 파싱된 오더 정보를 담는 데이터 모델 정의: 7번에서 사용
@@ -19,6 +20,7 @@ class ParsedOrder(BaseModel):
     treatment: str
     room: str
     raw_text: str
+    doctor_name: Optional[str] = None  # 지명 의사 (선택적)
 
     # 환자 이름 검증 (최소 2글자 이상)
     @validator('patient_name')
@@ -41,11 +43,18 @@ class ParsedOrder(BaseModel):
             raise ValueError("시술 내용이 너무 짧습니다")
         return v
 
-    # 8. 방 번호 검증 (최소 2글자 이상)
+    # 방 번호 검증 (최소 2글자 이상)
     @validator('room')
     def validate_room(cls, v):
         if len(v) < 2:
             raise ValueError("방 번호가 너무 짧습니다")
+        return v
+
+    # 지명 의사 이름 검증 (선택적, 있으면 최소 2글자 이상)
+    @validator('doctor_name')
+    def validate_doctor_name(cls, v):
+        if v is not None and len(v) < 2:
+            raise ValueError("의사 이름이 너무 짧습니다")
         return v
 
 # 3. 오더 텍스트를 파싱하는 메인 클래스
@@ -66,7 +75,13 @@ class OrderParser:
                 return None
 
             # 6. 추출된 필드들을 개별 변수로 할당
-            patient_name, chart_number, treatment, room = fields
+            if len(fields) == 5:
+                # 5개 필드: 지명 의사가 있는 경우
+                patient_name, chart_number, treatment, room, doctor_name = fields
+            else:
+                # 4개 필드: 자동 배정인 경우
+                patient_name, chart_number, treatment, room = fields
+                doctor_name = None
 
             # 7. ParsedOrder 객체 생성 (검증 포함)
             parsed = ParsedOrder(
@@ -74,7 +89,8 @@ class OrderParser:
                 chart_number=chart_number,
                 treatment=treatment,
                 room=room,
-                raw_text=raw_text
+                raw_text=raw_text,
+                doctor_name=doctor_name
             )
             return parsed
         
@@ -84,7 +100,7 @@ class OrderParser:
             return None
 
     # 8. 정규표현식을 사용하여 텍스트에서 필드 추출하는 내부 함수
-    def _extract_fields(self, text: str) -> Optional[Tuple[str, str, str, str]]:
+    def _extract_fields(self, text: str) -> Optional[Tuple[str, ...]]:
         # 순차적으로 패턴 매칭 시도: 시간 복잡도 O(n)
         for pattern in TEMPLATE_PATTERNS:
             match = pattern.match(text)
