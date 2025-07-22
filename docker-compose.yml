@@ -46,6 +46,8 @@ services:
       - RABBITMQ_HOST=rabbitmq
       - SLACK_WEBHOOK_HOSPITAL_8=${SLACK_WEBHOOK_HOSPITAL_8}
       - SLACK_WEBHOOK_HOSPITAL_9=${SLACK_WEBHOOK_HOSPITAL_9}
+      - RABBITMQ_USERNAME=3020467
+      - RABBITMQ_PASSWORD=jung04671588!
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -62,6 +64,8 @@ services:
       - RABBITMQ_HOST=rabbitmq
       - SLACK_WEBHOOK_HOSPITAL_8=${SLACK_WEBHOOK_HOSPITAL_8}
       - SLACK_WEBHOOK_HOSPITAL_9=${SLACK_WEBHOOK_HOSPITAL_9}
+      - RABBITMQ_USERNAME=3020467
+      - RABBITMQ_PASSWORD=jung04671588!
     depends_on:
       rabbitmq:
         condition: service_healthy
