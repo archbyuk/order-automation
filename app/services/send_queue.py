@@ -10,7 +10,7 @@ def send_to_queue(message: dict):
         
         # RabbitMQ 연결 설정
         connection = pika.BlockingConnection(pika.ConnectionParameters(
-            host=os.getenv("RABBITMQ_HOST", "rabbitmq"),
+            host=os.getenv("RABBITMQ_HOST", "localhost"),
             credentials=credentials
         ))
         
@@ -32,4 +32,4 @@ def send_to_queue(message: dict):
     
     except Exception as e:
         print(f"Failed to send to RabbitMQ: {e}")
-        raise 
+        raise
