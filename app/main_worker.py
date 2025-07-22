@@ -46,6 +46,10 @@ def process_order(message: dict, db):
     print(f"   차트 번호: {parsed_order.chart_number}")
     print(f"   시술 내용: {parsed_order.treatment}")
     print(f"   방 번호: {parsed_order.room}")
+    if parsed_order.doctor_name:
+        print(f"   지명 의사: {parsed_order.doctor_name}")
+    else:
+        print(f"   지명 의사: 없음 (자동 배정)")
     
     # 8. 2단계: 시술 파싱
     print("\n--- 2단계: 시술 파싱 ---")
@@ -127,11 +131,19 @@ def process_order(message: dict, db):
     print("\n--- 4단계: 의사 배정 ---")
     
     try:
+        # 지명 의사 정보 확인
+        specified_doctor_name = parsed_order.doctor_name
+        if specified_doctor_name:
+            print(f"지명 의사: {specified_doctor_name}")
+        else:
+            print("자동 배정 모드")
+        
         # 시술들을 의사에게 배정
         assignment_results = doctor_assignment_service.assign_doctors_to_treatments(
             db=db,
             hospital_id=int(message['hospital_id']),
-            mapped_treatments=mapped_treatments
+            mapped_treatments=mapped_treatments,
+            specified_doctor_name=specified_doctor_name
         )
         
         print(f"✅ 의사 배정 완료!")
