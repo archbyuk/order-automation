@@ -12,24 +12,22 @@ async def order_processing_error_handler(request: Request, exc: OrderProcessingE
     
     # 에러 타입 매핑
     error_type_map = {
-        600: "PARSING_ERROR",
-        601: "TREATMENT_MAPPING_ERROR", 
-        602: "DOCTOR_ASSIGNMENT_ERROR",
-        603: "SPECIFIED_DOCTOR_ASSIGNMENT_ERROR",
-        604: "DATABASE_SAVE_ERROR",
-        605: "TREATMENT_PARSING_ERROR",
-        606: "VALIDATION_ERROR"
+        400: "PARSING_ERROR",
+        404: "TREATMENT_MAPPING_ERROR", 
+        503: "DOCTOR_ASSIGNMENT_ERROR",
+        409: "SPECIFIED_DOCTOR_ASSIGNMENT_ERROR",
+        500: "DATABASE_SAVE_ERROR",
+        422: "TREATMENT_PARSING_ERROR"
     }
     
     # 해결 방법 제안
     suggestion_map = {
-        600: "환자명/차트번호/시술내용/방번호 형식으로 입력해주세요",
-        601: "병원에서 사용하는 시술명으로 입력해주세요",
-        602: "현재 배정 가능한 의사가 없습니다. 잠시 후 다시 시도해주세요",
-        603: "지명된 의사가 휴무시간이거나 해당 시술을 할 수 없습니다",
-        604: "시스템 오류가 발생했습니다. 잠시 후 다시 시도해주세요",
-        605: "시술 내용을 명확하게 입력해주세요",
-        606: "입력한 정보를 확인해주세요"
+        400: "환자명/차트번호/시술내용/방번호 형식으로 입력해주세요",
+        404: "병원에서 사용하는 시술명으로 입력해주세요",
+        503: "현재 배정 가능한 의사가 없습니다. 잠시 후 다시 시도해주세요",
+        409: "지명된 의사가 휴무시간이거나 해당 시술을 할 수 없습니다",
+        500: "시스템 오류가 발생했습니다. 잠시 후 다시 시도해주세요",
+        422: "시술 내용을 명확하게 입력해주세요"
     }
     
     return JSONResponse(
