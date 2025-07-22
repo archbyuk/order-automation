@@ -10,10 +10,6 @@ from app.services.doctor_assignment import doctor_assignment_service
 from app.services.slack_service import get_slack_service
 from app.services.scheduler import get_scheduler_service
 from app.database import get_db
-from app.exceptions import (
-    OrderParsingError, TreatmentParsingError, TreatmentMappingError,
-    DoctorAssignmentError, SpecifiedDoctorAssignmentError, DatabaseSaveError
-)
 
 # received order data example
 """
@@ -37,14 +33,9 @@ def process_order(message: dict, db):
     print(f"row 오더 텍스트: {message['raw_text']}")
     
     try:
-        # 1단계: 주문 텍스트 파싱
+        # 1단계: 주문 텍스트 파싱 (API에서 이미 검증됨)
         print("\n--- 1단계: 주문 텍스트 파싱 ---")
-        success, parsed_order, error_message = order_parser.parse_with_validation(message['raw_text'])
-        
-        if not success:
-            print(f"❌ 파싱 실패: {error_message}")
-            print("=== 오더 처리 실패 ===\n")
-            return
+        parsed_order = order_parser.parse(message['raw_text'])  # 항상 성공할 것
         
         print(f"✅ 파싱 성공!")
         print(f"   환자 이름: {parsed_order.patient_name}")
@@ -56,204 +47,149 @@ def process_order(message: dict, db):
         else:
             print(f"   지명 의사: 없음 (자동 배정)")
         
-        # 2단계: 시술 파싱
+        # 2단계: 시술 파싱 (API에서 이미 검증됨)
         print("\n--- 2단계: 시술 파싱 ---")
+        parsed_treatments = treatment_parser.parse_treatment_text(parsed_order.treatment)  # 항상 성공할 것
         
-        # 2-1. 시술 텍스트 파싱 실행
-        try:
-            parsed_treatments = treatment_parser.parse_treatment_text(parsed_order.treatment)
-            
-            # 2-2. 파싱 결과 확인
-            if not parsed_treatments:
-                print(f"❌ 시술 파싱 실패: '{parsed_order.treatment}'")
-                print("=== 오더 처리 실패 ===\n")
-                return
-            
-            # 2-3. 파싱 성공 시 결과 출력
-            print(f"✅ 시술 파싱 성공!")
-            print(f" [ 원본 시술: {parsed_order.treatment} ]")
-            print(f" [[ 파싱된 시술 수: {len(parsed_treatments)}개 ]]")
-            print()
-            
-            for i, treatment in enumerate(parsed_treatments, 1):
-                print(f"- 시술 {i}:")
-                print(f"- 시술명: {treatment.name}")
-                print(f"- 횟수: {treatment.count}회")
-                
-                if treatment.round_info:
-                    print(f"- 회차: {treatment.round_info}")
-                if treatment.area_note:
-                    print(f"- 메모: {treatment.area_note}")
-                
-                print()  # 각 시술 사이에 빈 줄 추가
-            
-        except Exception as e:
-            print(f"❌ 시술 파싱 중 오류 발생: {e}")
-            print("=== 오더 처리 실패 ===\n")
-            return
+        print(f"✅ 시술 파싱 성공!")
+        print(f" [ 원본 시술: {parsed_order.treatment} ]")
+        print(f" [[ 파싱된 시술 수: {len(parsed_treatments)}개 ]]")
+        print()
         
-        # 3단계: 시술 매핑
+        for i, treatment in enumerate(parsed_treatments, 1):
+            print(f"- 시술 {i}:")
+            print(f"- 시술명: {treatment.name}")
+            print(f"- 횟수: {treatment.count}회")
+            
+            if treatment.round_info:
+                print(f"- 회차: {treatment.round_info}")
+            if treatment.area_note:
+                print(f"- 메모: {treatment.area_note}")
+            
+            print()  # 각 시술 사이에 빈 줄 추가
+        
+        # 3단계: 시술 매핑 (API에서 이미 검증됨)
         print("\n--- 3단계: 시술 매핑 ---")
+        mapped_treatments = map_parsed_treatments(
+            db=db,
+            hospital_id=int(message['hospital_id']),
+            parsed_treatments=parsed_treatments
+        )  # 항상 성공할 것
         
-        try:
-            # 파싱된 시술들을 DB 시술 ID로 매핑
-            mapped_treatments = map_parsed_treatments(
-                db=db,
-                hospital_id=int(message['hospital_id']),
-                parsed_treatments=parsed_treatments
-            )
+        print(f"✅ 시술 매핑 성공!")
+        print(f" [[ 매핑된 시술 수: {len(mapped_treatments)}개 ]]")
+        print()
+        
+        for i, treatment in enumerate(mapped_treatments, 1):
+            print(f"- 매핑된 시술 {i}:")
+            print(f"  - 시술 ID: {treatment.treatment_id}")
+            print(f"  - 횟수: {treatment.count}회")
+            print(f"  - 예상 소요시간: {treatment.estimated_minutes}분")
             
-            # 매핑 결과 확인
-            if not mapped_treatments:
-                print(f"❌ 시술 매핑 실패: 매칭되는 시술이 없습니다")
-                print("=== 오더 처리 실패 ===\n")
-                return
+            if treatment.round_info:
+                print(f"  - 회차: {treatment.round_info}")
+            if treatment.area_note:
+                print(f"  - 메모: {treatment.area_note}")
             
-            # 매핑 성공 시 결과 출력
-            print(f"✅ 시술 매핑 성공!")
-            print(f" [[ 매핑된 시술 수: {len(mapped_treatments)}개 ]]")
-            print()
-            
-            for i, treatment in enumerate(mapped_treatments, 1):
-                print(f"- 매핑된 시술 {i}:")
-                print(f"  - 시술 ID: {treatment.treatment_id}")
-                print(f"  - 횟수: {treatment.count}회")
-                print(f"  - 예상 소요시간: {treatment.estimated_minutes}분")
-                
-                if treatment.round_info:
-                    print(f"  - 회차: {treatment.round_info}")
-                if treatment.area_note:
-                    print(f"  - 메모: {treatment.area_note}")
-                
-                print()  # 각 시술 사이에 빈 줄 추가
-            
-        except Exception as e:
-            print(f"❌ 시술 매핑 중 오류 발생: {e}")
-            print("=== 오더 처리 실패 ===\n")
-            return
+            print()  # 각 시술 사이에 빈 줄 추가
         
         # 4단계: 의사 배정
         print("\n--- 4단계: 의사 배정 ---")
         
-        try:
-            # 지명 의사 정보 확인
-            specified_doctor_name = parsed_order.doctor_name
-            if specified_doctor_name:
-                print(f"지명 의사: {specified_doctor_name}")
+        # 지명 의사 정보 확인
+        specified_doctor_name = parsed_order.doctor_name
+        if specified_doctor_name:
+            print(f"지명 의사: {specified_doctor_name}")
+        else:
+            print("자동 배정 모드")
+        
+        # 시술들을 의사에게 배정
+        assignment_results = doctor_assignment_service.assign_doctors_to_treatments(
+            db=db,
+            hospital_id=int(message['hospital_id']),
+            mapped_treatments=mapped_treatments,
+            specified_doctor_name=specified_doctor_name
+        )
+        
+        print(f"✅ 의사 배정 완료!")
+        print(f" [[ 배정 결과 상세 ]]")
+        print()
+        
+        # 배정 결과 상세 출력
+        for i, result in enumerate(assignment_results, 1):
+            print(f"- 시술 {i} (ID: {result.treatment_id}):")
+            
+            if result.assignment_success:
+                print(f"  ✅ 배정 성공!")
+                print(f"  - 담당 의사: {result.assigned_doctor_name} (ID: {result.assigned_doctor_id})")
+                print(f"  - 배정 점수: {result.assignment_score:.1f}점")
+                print(f"  - 배정 사유: {result.reason}")
             else:
-                print("자동 배정 모드")
+                print(f"  ❌ 배정 실패!")
+                print(f"  - 실패 사유: {result.reason}")
             
-            # 시술들을 의사에게 배정
-            assignment_results = doctor_assignment_service.assign_doctors_to_treatments(
-                db=db,
-                hospital_id=int(message['hospital_id']),
-                mapped_treatments=mapped_treatments,
-                specified_doctor_name=specified_doctor_name
-            )
-            
-            print(f"✅ 의사 배정 완료!")
-            print(f" [[ 배정 결과 상세 ]]")
-            print()
-            
-            # 배정 결과 상세 출력
-            for i, result in enumerate(assignment_results, 1):
-                print(f"- 시술 {i} (ID: {result.treatment_id}):")
-                
-                if result.assignment_success:
-                    print(f"  ✅ 배정 성공!")
-                    print(f"  - 담당 의사: {result.assigned_doctor_name} (ID: {result.assigned_doctor_id})")
-                    print(f"  - 배정 점수: {result.assignment_score:.1f}점")
-                    print(f"  - 배정 사유: {result.reason}")
-                else:
-                    print(f"  ❌ 배정 실패!")
-                    print(f"  - 실패 사유: {result.reason}")
-                
-                print()  # 각 시술 사이에 빈 줄 추가
-            
-        except (DoctorAssignmentError, SpecifiedDoctorAssignmentError) as e:
-            print(f"❌ 의사 배정 실패: {e}")
-            print("=== 오더 처리 실패 ===\n")
-            return
-        except Exception as e:
-            print(f"❌ 의사 배정 중 예상치 못한 오류 발생: {e}")
-            print("=== 오더 처리 실패 ===\n")
-            return
+            print()  # 각 시술 사이에 빈 줄 추가
         
         # 5단계: DB 저장 (의사 배정 정보 포함)
         print("\n--- 5단계: DB 저장 ---")
         
-        try:
-            # 매핑된 시술들을 DB에 저장 (의사 배정 정보 포함)
-            save_mapped_treatments_with_assignment(
-                db=db,
-                order_id=int(message['order_id']),
-                mapped_treatments=mapped_treatments,
-                assignment_results=assignment_results
-            )
-            
-            print(f"✅ DB 저장 성공!")
-            
-        except Exception as e:
-            print(f"❌ DB 저장 중 오류 발생: {e}")
-            print("=== 오더 처리 실패 ===\n")
-            return
+        # 매핑된 시술들을 DB에 저장 (의사 배정 정보 포함)
+        save_mapped_treatments_with_assignment(
+            db=db,
+            order_id=int(message['order_id']),
+            mapped_treatments=mapped_treatments,
+            assignment_results=assignment_results
+        )
+        
+        print(f"✅ DB 저장 성공!")
         
         # 6단계: 슬랙 알림 전송 (의사 배정 완료 알림)
         print("\n--- 6단계: 슬랙 알림 전송 ---")
         
-        try:
-            slack_service = get_slack_service()
+        slack_service = get_slack_service()
+        
+        # 배정 성공한 시술들만 필터링
+        successful_assignments = [r for r in assignment_results if r.assignment_success]
+        
+        if successful_assignments:
+            # 첫 번째 성공한 배정의 의사 정보 사용 (모든 시술이 같은 의사에게 배정됨)
+            first_assignment = successful_assignments[0]
             
-            # 배정 성공한 시술들만 필터링
-            successful_assignments = [r for r in assignment_results if r.assignment_success]
+            # 지명 의사가 있는지 확인
+            is_specified_doctor = parsed_order.doctor_name is not None
             
-            if successful_assignments:
-                # 첫 번째 성공한 배정의 의사 정보 사용 (모든 시술이 같은 의사에게 배정됨)
-                first_assignment = successful_assignments[0]
+            # 슬랙 알림 전송 (원본 오더 텍스트 + 배정된 의사명)
+            # created_by 값을 안전하게 처리
+            created_by = None
+            if 'created_by' in message and message['created_by'] is not None:
+                try:
+                    created_by = int(message['created_by'])
                 
-                # 지명 의사가 있는지 확인
-                is_specified_doctor = parsed_order.doctor_name is not None
-                
-                # 슬랙 알림 전송 (원본 오더 텍스트 + 배정된 의사명)
-                # created_by 값을 안전하게 처리
-                created_by = None
-                if 'created_by' in message and message['created_by'] is not None:
-                    try:
-                        created_by = int(message['created_by'])
-                    
-                    except (ValueError, TypeError):
-                        print(f"경고: created_by 값 변환 실패: {message['created_by']}")
-                        created_by = None
-                
-                success = slack_service.send_assigned_order(
-                    order_text=message['raw_text'],
-                    assigned_doctor=first_assignment.assigned_doctor_name,
-                    hospital_id=int(message['hospital_id']),
-                    order_id=int(message['order_id']),
-                    db=db,
-                    created_by=created_by,
-                    is_specified_doctor=is_specified_doctor  # 지명 의사 여부 전달
-                )
-                
-                if success:
-                    print(f"✅ 슬랙 알림 전송 성공!")
-                else:
-                    print(f"❌ 슬랙 알림 전송 실패!")
+                except (ValueError, TypeError):
+                    print(f"경고: created_by 값 변환 실패: {message['created_by']}")
+                    created_by = None
+            
+            success = slack_service.send_assigned_order(
+                order_text=message['raw_text'],
+                assigned_doctor=first_assignment.assigned_doctor_name,
+                hospital_id=int(message['hospital_id']),
+                order_id=int(message['order_id']),
+                db=db,
+                created_by=created_by,
+                is_specified_doctor=is_specified_doctor  # 지명 의사 여부 전달
+            )
+            
+            if success:
+                print(f"✅ 슬랙 알림 전송 성공!")
             else:
-                print(f"⚠️ 배정 성공한 시술이 없어 슬랙 알림을 보내지 않습니다.")
-                
-        except Exception as slack_error:
-            print(f"❌ 슬랙 알림 전송 중 오류 발생: {str(slack_error)}")
-            # 슬랙 알림 실패는 전체 프로세스에 영향을 주지 않음
+                print(f"❌ 슬랙 알림 전송 실패!")
+        else:
+            print(f"⚠️ 배정 성공한 시술이 없어 슬랙 알림을 보내지 않습니다.")
         
         # 7. 처리 시간 시뮬레이션 (1초 대기)
         time.sleep(1)
         print("=== 오더 처리 완료 ===\n")
         
-    except (OrderParsingError, TreatmentParsingError, TreatmentMappingError, 
-            DoctorAssignmentError, SpecifiedDoctorAssignmentError, DatabaseSaveError) as e:
-        print(f"❌ 오더 처리 실패: {e}")
-        print("=== 오더 처리 실패 ===\n")
     except Exception as e:
         print(f"❌ 예상치 못한 오류 발생: {e}")
         print("=== 오더 처리 실패 ===\n")
