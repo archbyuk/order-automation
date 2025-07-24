@@ -80,7 +80,7 @@ class OrderParser:
                 patient_name, chart_number, treatment, room, doctor_name = fields
             else:
                 # 4개 필드: 자동 배정인 경우
-                patient_name, chart_number, treatment, room = fields
+            patient_name, chart_number, treatment, room = fields
                 doctor_name = None
 
             # 7. ParsedOrder 객체 생성 (검증 포함)
@@ -118,8 +118,8 @@ class OrderParser:
     def parse_with_validation(self, raw_text: str) -> Tuple[bool, Optional[ParsedOrder], str]:
         # 파싱 실행
         try:
-            parsed = self.parse(raw_text)
-            return True, parsed, ""
+        parsed = self.parse(raw_text)
+        return True, parsed, ""
         except (OrderParsingError, ValidationError) as e:
             return False, None, str(e)
 

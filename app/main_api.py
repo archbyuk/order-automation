@@ -54,3 +54,8 @@ def db_check(db: Depends = Depends(get_db)):
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+
+# 시술별 가능한 성별데이터도 있어야 해. 그리고 의사프로필에도 성별 정보가 담겨야해. 브라질리언같은 건 같은 성별만 가능
+
+# 근데 성별은 환자 이름 부분에 성별을 넣지 않으면 불가능함. 아니면 시술 정보에서 성별 정보를 화인하고 매칭시켜야 하는데, 우선적으로 그 데이터 조차 없음

@@ -39,9 +39,9 @@ def create_order_endpoint(req: schemas.OrderCreateRequest, db: Session = Depends
             raise TreatmentMappingError(f"입력한 시술을 찾을 수 없습니다: '{parsed_order.treatment}'")
         
         # 모든 사전 검증 통과 시에만 오더 생성
-        order = create_order(db, req)
-        
-        return { "order_id": order.order_id, "message": "Order created and queued successfully" }
+    order = create_order(db, req)
+    
+    return { "order_id": order.order_id, "message": "Order created and queued successfully" }
         
     except (OrderParsingError, TreatmentParsingError, TreatmentMappingError):
         # 커스텀 예외는 전역 핸들러에서 600번대 응답으로 자동 변환

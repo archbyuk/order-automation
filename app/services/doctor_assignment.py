@@ -125,58 +125,58 @@ class DoctorAssignmentService:
         """기존 자동 배정 로직"""
         logger.info("자동 의사 배정 시작")
         
-        # 1. 의사 후보들을 한 번에 조회 (성능 최적화)
-        doctor_candidates = self._get_doctor_candidates(db, hospital_id)
-        
-        if not doctor_candidates:
+            # 1. 의사 후보들을 한 번에 조회 (성능 최적화)
+            doctor_candidates = self._get_doctor_candidates(db, hospital_id)
+            
+            if not doctor_candidates:
             raise DoctorAssignmentError("병원에 배정 가능한 의사가 없습니다")
-        
-        # 2. 오더의 모든 시술을 할 수 있는 의사 찾기
-        all_treatment_ids = [treatment.treatment_id for treatment in mapped_treatments]
-        available_candidates = [
-            c for c in doctor_candidates 
-            if all(treatment_id in c.available_treatments for treatment_id in all_treatment_ids)
-        ]
-        
-        if not available_candidates:
+            
+            # 2. 오더의 모든 시술을 할 수 있는 의사 찾기
+            all_treatment_ids = [treatment.treatment_id for treatment in mapped_treatments]
+            available_candidates = [
+                c for c in doctor_candidates 
+                if all(treatment_id in c.available_treatments for treatment_id in all_treatment_ids)
+            ]
+            
+            if not available_candidates:
             raise DoctorAssignmentError("오더의 모든 시술을 할 수 있는 의사가 없습니다")
-        
-        # 3. 최적 의사 선택
-        best_candidate = self._select_best_candidate(available_candidates)
-        
-        if not best_candidate:
+            
+            # 3. 최적 의사 선택
+            best_candidate = self._select_best_candidate(available_candidates)
+            
+            if not best_candidate:
             raise DoctorAssignmentError("적절한 의사를 찾을 수 없습니다")
-        
-        # 4. 선택된 의사에게 모든 시술 배정
-        assignment_results = []
-        total_minutes = sum(treatment.estimated_minutes for treatment in mapped_treatments)
-        
-        try:
-            # DB 업데이트
-            self._update_doctor_in_database(db, best_candidate.doctor, total_minutes)
             
-            # 모든 시술에 대해 배정 결과 생성
-            for treatment in mapped_treatments:
-                result = DoctorAssignmentResult(
-                    treatment_id=treatment.treatment_id,
-                    assigned_doctor_id=best_candidate.doctor.user_id,
-                    assigned_doctor_name=best_candidate.doctor.name,
-                    assignment_success=True,
+            # 4. 선택된 의사에게 모든 시술 배정
+            assignment_results = []
+            total_minutes = sum(treatment.estimated_minutes for treatment in mapped_treatments)
+            
+            try:
+                # DB 업데이트
+                self._update_doctor_in_database(db, best_candidate.doctor, total_minutes)
+                
+                # 모든 시술에 대해 배정 결과 생성
+                for treatment in mapped_treatments:
+                    result = DoctorAssignmentResult(
+                        treatment_id=treatment.treatment_id,
+                        assigned_doctor_id=best_candidate.doctor.user_id,
+                        assigned_doctor_name=best_candidate.doctor.name,
+                        assignment_success=True,
                     reason=f"자동 배정된 의사 {best_candidate.doctor.name}에게 모든 시술 배정됨",
-                    assignment_score=best_candidate.score
-                )
-                assignment_results.append(result)
-            
+                        assignment_score=best_candidate.score
+                    )
+                    assignment_results.append(result)
+                
             logger.info(f"자동 배정된 의사 {best_candidate.doctor.name}에게 {len(mapped_treatments)}개 시술 배정 완료 (총 {total_minutes}분)")
-            
-        except Exception as e:
-            logger.error(f"의사 배정 DB 업데이트 실패: {e}")
+                
+            except Exception as e:
+                logger.error(f"의사 배정 DB 업데이트 실패: {e}")
             raise DoctorAssignmentError(f"DB 업데이트 실패: {str(e)}")
-        
-        # 5. 배정 결과 로깅
-        self._log_assignment_summary(assignment_results)
-        
-        return assignment_results
+            
+            # 5. 배정 결과 로깅
+            self._log_assignment_summary(assignment_results)
+            
+            return assignment_results
     
     
     ###========================================================== ###
