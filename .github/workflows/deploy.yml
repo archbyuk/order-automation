@@ -22,11 +22,11 @@ jobs:
     - name: Add known_hosts
       run: |
         mkdir -p ~/.ssh
-        ssh-keyscan -4 -H 43.201.5.115 >> ~/.ssh/known_hosts
+        ssh-keyscan -4 -H 3.36.116.64 >> ~/.ssh/known_hosts
 
     - name: Deploy to EC2 and restart Docker
       run: |
-        ssh -i ~/.ssh/id_rsa ec2-user@43.201.5.115 << EOF
+        ssh -i ~/.ssh/id_rsa ec2-user@3.36.116.64 << EOF
           sudo systemctl restart docker
           sleep 3
 
